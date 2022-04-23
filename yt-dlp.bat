@@ -1,19 +1,50 @@
 @echo off
-
-set /p URL=[45m请输入下载地址：[0m
-echo [44m查看可用的下载格式. . .[0m
 cd C:\%HOMEPATH%\Downloads\youtube-dl
-yt-dlp -F %URL%
+set /P url=[45m输入下载地址：[0m
+echo [43m查看可用的视频格式. . .[0m
+yt-dlp -F %url%
 
-set /p OPTION=[45m请设定下载格式（ID数值，可使用+组合）：[0m
-echo [44m开始下载. . .[0m
-
-:download
-yt-dlp -o C:\%HOMEPATH%\Downloads\%%(title)s.%%(ext)s -f %OPTION% --downloader aria2c --downloader-args aria2c:"-x 16 -k 1M" %URL%
-if errorlevel 1 (
-   echo [41m下载中断，重新尝试. . .[0m
-   goto download
-) else (
-   echo [42m下载完成，按键退出！[0m
-   pause>nul
+:format
+set /P fmt=[45m设置下载格式（ID值，组合使用+）：[0m
+yt-dlp -s -f %fmt% %url% >nul 2>info.log
+findstr /C:"Requested format is not available" info.log
+if %errorlevel%==0 (
+   echo [41m下载格式不可用！[0m
+   goto format
 )
+
+:subtitle
+echo [43m查看可用的字幕类型（简/繁/英）. . .[0m
+yt-dlp --list-subs %url% >>info.log
+findstr /C:"has no subtitles" info.log
+if %errorlevel%==0 (
+   echo [41m无字幕可用！[0m
+   goto download2
+)
+findstr "^en ^zh" info.log | findstr /V "from"
+set /P lang=[45m设置字幕语言（第1项）：[0m
+set /P sub=[45m设置字幕格式（第3项）：[0m
+
+:download1
+echo [43m下载开始. . .[0m
+yt-dlp -o C:\%HOMEPATH%\Downloads\%%(title)s.%%(ext)s --downloader aria2c --downloader-args aria2c:"-x 16 -k 1M" -f %fmt% --embed-subs --sub-langs %lang% --sub-format %sub% %url%
+if errorlevel 1 (
+   echo [41m下载失败，重新尝试. . .[0m
+   goto download1
+) else (
+   goto end
+)
+
+:download2
+echo [43m下载开始. . .[0m
+yt-dlp -o C:\%HOMEPATH%\Downloads\%%(title)s.%%(ext)s --downloader aria2c --downloader-args aria2c:"-x 16 -k 1M" -f %fmt% %url%
+if errorlevel 1 (
+   echo [41m下载失败，重新尝试. . .[0m
+   goto download2
+) else (
+   goto end
+)
+
+:end
+echo [42m下载完成，按键退出！[0m
+pause>nul
